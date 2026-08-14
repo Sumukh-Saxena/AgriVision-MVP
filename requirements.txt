@@ -1,0 +1,8 @@
+streamlit>=1.37
+tensorflow>=2.15
+pillow
+langchain>=0.3
+langchain-core>=0.3
+langchain-mistralai>=0.2
+langgraph>=0.2
+python-dotenv
