@@ -51,3 +51,24 @@ class DiseaseExplainerAgent:
             "Please explain this disease in detail as per your instructions."
         )
         return self.chain.invoke({"input": user_input})
+
+    def chat(
+        self,
+        question: str,
+        disease_name: str | None = None,
+        confidence: float | None = None,
+    ) -> str:
+        """Answer a follow-up farming question using the existing AgriExpert chain.
+
+        If a recent analysis is available, its disease/confidence is passed as
+        context so the answer stays grounded in the detected condition.
+        """
+        context = ""
+        if disease_name:
+            conf = f"{confidence * 100:.2f}%" if confidence is not None else "not available"
+            context = (
+                "Context: A crop-image analysis recently flagged the disease "
+                f"'{disease_name}' with {conf} confidence.\n\n"
+            )
+        user_input = f"{context}Farmer question: {question}"
+        return self.chain.invoke({"input": user_input})
