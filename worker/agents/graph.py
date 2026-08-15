@@ -29,6 +29,7 @@ class CropDiseaseWorkflow:
         self.graph = self._build_graph()
 
     def _classify(self, state: CropDiseaseState) -> CropDiseaseState:
+        # Image is resized to 256x256 and fed to the CNN model inside `model_api.predict`.
         predicted_disease, confidence = model_api.predict(state["image_path"])
         return {
             "predicted_disease": predicted_disease,
@@ -45,7 +46,7 @@ class CropDiseaseWorkflow:
         return {"explanation": explanation, "message": "Explanation generated."}
 
     def _route(self, state: CropDiseaseState) -> str:
-        confidence = model_api.giveConfidence()
+        confidence = state.get("confidence") or 0.0
         if confidence > self.threshold:
             return "explain"
         return "end"
