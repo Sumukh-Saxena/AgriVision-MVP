@@ -18,7 +18,7 @@ class DiseaseExplainerAgent:
     def __init__(
         self,
         api_key: str | None = None,
-        model_name: str = "mistral-large-latest",
+        model_name: str = "mistral-small-latest",
         temperature: float = 0.3,
     ) -> None:
         self.api_key = api_key or os.getenv("MISTRAL_API_KEY")
