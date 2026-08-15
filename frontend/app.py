@@ -1,59 +1,39 @@
-import sys
-import tempfile
-from pathlib import Path
+"""AgriVision - AI Crop Health Assistant.
 
-import streamlit as st
+Transforms the basic classifier into a chat + dashboard interface while keeping
+the existing CNN / LangGraph / Mistral backend as the single source of truth.
+"""
+
+import sys
+from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from worker.agents.explainer_agent import DiseaseExplainerAgent
-from worker.agents.graph import CropDiseaseWorkflow
+import streamlit as st
 
-st.set_page_config(page_title="Crop Disease Classifier", page_icon="🌾", layout="centered")
+from frontend.state import PAGES, init_state
+from frontend.ui.chat import render_chat
+from frontend.ui.dashboard import render_dashboard
+from frontend.ui.history import render_history
+from frontend.ui.settings import render_settings
+from frontend.ui.sidebar import render_sidebar
+from frontend.ui.styles import apply as apply_styles
 
-st.title("🌾 Crop Disease Classifier")
-st.caption("Upload a photo of a crop/leaf. A CNN model detects the disease and a Mistral-powered agent explains it.")
+st.set_page_config(
+    page_title="AgriVision AI Farming Assistant",
+    page_icon="🌱",
+    layout="wide",
+)
 
+apply_styles()
+init_state()
+render_sidebar()
 
-@st.cache_resource
-def get_workflow():
-    explainer = DiseaseExplainerAgent()
-    return CropDiseaseWorkflow(explainer_agent=explainer)
-
-
-uploaded_file = st.file_uploader("Upload crop image", type=["jpg", "jpeg", "png"])
-
-if uploaded_file is not None:
-    st.image(uploaded_file, caption="Uploaded image", use_container_width=True)
-
-    if st.button("Analyze"):
-        with st.spinner("Analyzing image..."):
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-                tmp.write(uploaded_file.getvalue())
-                tmp_path = tmp.name
-
-            try:
-                workflow = get_workflow()
-                result = workflow.run(tmp_path)
-            except Exception as e:
-                st.error(f"Analysis failed: {e}")
-                st.stop()
-            finally:
-                Path(tmp_path).unlink(missing_ok=True)
-
-        st.subheader("Prediction")
-        disease = result.get("predicted_disease")
-        confidence = result.get("confidence")
-
-        if disease and confidence is not None:
-            st.metric("Detected Disease", disease)
-            st.metric("Confidence", f"{confidence * 100:.2f}%")
-
-        if result.get("explanation"):
-            st.subheader("Explanation")
-            st.write(result["explanation"])
-        else:
-            st.warning(
-                "Confidence was below 50%, so the AI explanation was skipped. "
-                "Please verify the crop manually or try a clearer image."
-            )
+if st.session_state.page == "Chat":
+    render_chat()
+elif st.session_state.page == "Farm Dashboard":
+    render_dashboard()
+elif st.session_state.page == "History":
+    render_history()
+elif st.session_state.page == "Settings":
+    render_settings()
