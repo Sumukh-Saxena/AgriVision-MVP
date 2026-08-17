@@ -4,6 +4,7 @@ import streamlit as st
 
 from frontend.ui.explanation import render_explanation
 from frontend.ui.result_card import render_result_card
+from frontend.ui.weather import render_weather
 
 
 def render_history() -> None:
@@ -31,6 +32,8 @@ def render_history() -> None:
     if expanded is not None and 0 <= expanded < len(analyses):
         a = analyses[expanded]
         st.divider()
+        if a.get("location"):
+            st.markdown(f"**Location:** {a['location']}")
         render_result_card(
             {
                 "predicted_disease": a.get("prediction") or a.get("disease"),
@@ -38,5 +41,7 @@ def render_history() -> None:
                 "explanation": a.get("explanation"),
             }
         )
+        if a.get("weather"):
+            render_weather(a["weather"])
         if a.get("explanation"):
             render_explanation(a["explanation"])

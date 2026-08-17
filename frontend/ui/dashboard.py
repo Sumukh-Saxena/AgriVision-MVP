@@ -33,6 +33,7 @@ def render_dashboard() -> None:
             "Crop": a["crop"],
             "Disease": a["disease"],
             "Confidence": f"{a['confidence'] * 100:.0f}%" if a.get("confidence") is not None else "—",
+            "Location": a.get("location", ""),
             "Date": a.get("timestamp", ""),
         }
         for a in reversed(analyses)

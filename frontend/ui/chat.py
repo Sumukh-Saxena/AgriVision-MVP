@@ -10,7 +10,9 @@ import streamlit as st
 
 from frontend.backend import analyze_image, ask_question
 from frontend.ui.explanation import render_explanation
+from frontend.ui.regional import render_regional
 from frontend.ui.result_card import render_result_card, split_prediction
+from frontend.ui.weather import render_weather
 
 SUGGESTED_PROMPTS = [
     "Analyze my crop",
@@ -53,11 +55,31 @@ def render_chat() -> None:
         type=["jpg", "jpeg", "png"],
         key="chat_uploader",
     )
+
+    location = st.text_input(
+        "Where is the crop located? (City or State)",
+        placeholder="e.g. Pune, Maharashtra",
+        key="crop_location",
+        help="We fetch local weather from OpenWeather to ground the analysis.",
+    )
+
+    analyze_clicked = st.button(
+        "Analyze Crop",
+        type="primary",
+        width="stretch",
+        disabled=uploaded is None,
+    )
     if uploaded is not None:
+        st.caption(
+            f"Ready: {uploaded.name}"
+            + ("" if location else " — add your city/state to include weather.")
+        )
+
+    if analyze_clicked:
         file_id = getattr(uploaded, "file_id", None) or uploaded.name
         if file_id not in st.session_state.processed_files:
             st.session_state.processed_files.append(file_id)
-            _handle_image(uploaded.getvalue())
+            _handle_image(uploaded.getvalue(), location=location)
             st.rerun()
 
     prompt = st.chat_input("Ask about crop health, or upload a leaf image to analyze...")
@@ -93,6 +115,10 @@ def _render_message(msg: dict) -> None:
             st.image(msg["image"], caption="Leaf Image", width=260)
         if msg.get("result"):
             render_result_card(msg["result"])
+            if msg["result"].get("weather"):
+                render_weather(msg["result"]["weather"])
+            if msg["result"].get("regional"):
+                render_regional(msg["result"]["regional"], msg["result"].get("location"))
             if msg["result"].get("explanation"):
                 render_explanation(msg["result"]["explanation"])
 
@@ -102,15 +128,19 @@ def _render_message(msg: dict) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _handle_image(image_bytes: bytes) -> None:
+def _handle_image(image_bytes: bytes, location: str | None = None) -> None:
+    location = (location or "").strip() or None
+    content = "Uploaded a leaf/crop image"
+    if location:
+        content += f" from {location}"
     st.session_state.messages.append(
-        {"role": "user", "content": "Uploaded a leaf/crop image", "image": image_bytes, "result": None}
+        {"role": "user", "content": content, "image": image_bytes, "result": None}
     )
     st.session_state.pending_image = None
 
     with st.spinner("Analyzing image..."):
         try:
-            result = analyze_image(image_bytes)
+            result = analyze_image(image_bytes, location=location)
         except Exception as exc:  # noqa: BLE001 - surface errors to the farmer
             st.session_state.messages.append(
                 {"role": "assistant", "content": f"Analysis failed: {exc}", "image": None, "result": None}
@@ -120,6 +150,8 @@ def _handle_image(image_bytes: bytes) -> None:
     prediction = result.get("predicted_disease") or "Unknown"
     confidence = result.get("confidence") or 0.0
     explanation = result.get("explanation")
+    weather = result.get("weather")
+    regional = result.get("regional")
     crop, disease = split_prediction(prediction)
 
     st.session_state.analyses.append(
@@ -129,6 +161,9 @@ def _handle_image(image_bytes: bytes) -> None:
             "prediction": prediction,
             "confidence": confidence,
             "explanation": explanation,
+            "weather": weather,
+            "regional": regional,
+            "location": location,
             "timestamp": time.strftime("%Y-%m-%d %H:%M"),
         }
     )
@@ -137,6 +172,9 @@ def _handle_image(image_bytes: bytes) -> None:
         "disease": prediction,
         "confidence": confidence,
         "explanation": explanation,
+        "weather": weather,
+        "regional": regional,
+        "location": location,
     }
 
     st.session_state.messages.append(
