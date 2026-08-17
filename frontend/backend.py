@@ -21,11 +21,12 @@ def get_workflow():
     return CropDiseaseWorkflow(explainer_agent=explainer)
 
 
-def analyze_image(image_bytes: bytes) -> dict:
+def analyze_image(image_bytes: bytes, location: Optional[str] = None) -> dict:
     """Run the existing workflow on an uploaded image.
 
-    Returns the workflow state: predicted_disease, confidence and (only when
-    confidence > 50%) the Mistral-generated explanation.
+    Returns the workflow state: predicted_disease, confidence, (only when
+    confidence > 50%) the Mistral-generated explanation, and any weather info
+    fetched for the farmer-provided location.
     """
     workflow = get_workflow()
 
@@ -34,7 +35,7 @@ def analyze_image(image_bytes: bytes) -> dict:
         tmp_path = tmp.name
 
     try:
-        state = workflow.run(tmp_path)
+        state = workflow.run(tmp_path, location=location)
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
@@ -42,6 +43,9 @@ def analyze_image(image_bytes: bytes) -> dict:
         "predicted_disease": state.get("predicted_disease"),
         "confidence": state.get("confidence"),
         "explanation": state.get("explanation"),
+        "weather": state.get("weather"),
+        "regional": state.get("regional"),
+        "location": location,
     }
 
 
